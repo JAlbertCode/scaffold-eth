@@ -40,6 +40,7 @@ contract DEX {
     }
 
     //Trading
+    //Allows us to trade ETH for another token
     function ethToToken() public payable returns (uint256) {
         uint256 token_reserve = token.balanceOf(address(this));
         uint256 tokens_bought =
@@ -52,6 +53,7 @@ contract DEX {
         return tokens_bought;
     }
 
+    //Allows us to trade another token for ETH
     function tokenToEth(uint256 tokens) public returns (uint256) {
         uint256 token_reserve = token.balanceOf(address(this));
         uint256 eth_bought =
@@ -59,5 +61,33 @@ contract DEX {
         msg.sender.transfer(eth_bought);
         require(token.transferFrom(msg.sender, address(this), tokens));
         return eth_bought;
+    }
+
+    //Liquidity
+    //Deposit into a liquidity pool.
+    //The function receives ETH and also transfers tokens from the caller to the contract at the right ratio.
+    //The contract also tracks the amount of liquidity the depositing address owns vs the totalLiquidity.
+    function deposit() public payable returns (uint256) {
+        uint256 eth_reserve = address(this).balance.sub(msg.value);
+        uint256 token_reserve = token.balanceOf(address(this));
+        uint256 token_amount =
+            (msg.value.mul(token_reserve) / eth_reserve).add(1);
+        uint256 liquidity_minted = msg.value.mul(totalLiquidity) / eth_reserve;
+        liquidity[msg.sender] = liquidity[msg.sender].add(liquidity_minted);
+        totalLiquidity = totalLiquidity.add(liquidity_minted);
+        require(token.transferFrom(msg.sender, address(this), token_amount));
+        return liquidity_minted;
+    }
+
+    //withdraw from a liquidity pool
+    function withdraw(uint256 amount) public returns (uint256, uint256) {
+        uint256 token_reserve = token.balanceOf(address(this));
+        uint256 eth_amount = amount.mul(address(this).balance) / totalLiquidity;
+        uint256 token_amount = amount.mul(token_reserve) / totalLiquidity;
+        liquidity[msg.sender] = liquidity[msg.sender].sub(eth_amount);
+        totalLiquidity = totalLiquidity.sub(eth_amount);
+        msg.sender.transfer(eth_amount);
+        require(token.transfer(msg.sender, token_amount));
+        return (eth_amount, token_amount);
     }
 }
