@@ -80,6 +80,7 @@ contract DEX {
     }
 
     //withdraw from a liquidity pool
+    //The function lets a user take both ETH and tokens out at the correct ratio.
     function withdraw(uint256 amount) public returns (uint256, uint256) {
         uint256 token_reserve = token.balanceOf(address(this));
         uint256 eth_amount = amount.mul(address(this).balance) / totalLiquidity;
